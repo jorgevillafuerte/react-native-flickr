@@ -1,51 +1,53 @@
-import React, { Component } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import React, {Component, useState, useEffect, useRef} from 'react';
+import {ScrollView, Text, View} from 'react-native';
 import axios from 'axios';
+import {translate} from "../../translation";
 import AlbumDetail from './AlbumDetail';
 
-class AlbumList extends Component {
-  state = { photoset: null };
+const AlbumList = props => {
+    const [photosetState, setPhotoset] = useState({photoset: null});
+    const isCancelled = useRef(false);
 
-  componentWillMount() {
-    axios
-      .get(
-        'https://api.flickr.com/services/rest/?method=flickr.photosets.getList&api_key=6e8a597cb502b7b95dbd46a46e25db8d&user_id=137290658%40N08&format=json&nojsoncallback=1',
-      )
-      .then(response =>
-        this.setState({photoset: response.data.photosets.photoset}),
-      );
-  }
+    useEffect(() => {
+        callFlickr();
 
-  renderAlbums() {
-    return this.state.photoset.map(album => (
-      <AlbumDetail
-        navigation={this.props.navigation}
-        key={album.id}
-        title={album.title._content}
-        albumId={album.id}
-      />
-    ));
-  }
+        return () => {
+            isCancelled.current = true;
+        };
+    });
 
-  render() {
-    console.log(this.state);
+    let callFlickr = () => {
+        axios
+            .get(
+                'https://api.flickr.com/services/rest/?method=flickr.photosets.getList&api_key=6e8a597cb502b7b95dbd46a46e25db8d&user_id=137290658%40N08&format=json&nojsoncallback=1',
+            )
+            .then(response => {
+                if (!isCancelled.current) {
+                    setPhotoset({photoset: response.data.photosets.photoset});
+                }
+            });
+    };
 
-    if (!this.state.photoset) {
-			return (
-					<Text>
-            Loading...
-					</Text>
-				);
+    let renderAlbums = () => {
+        return photosetState.photoset.map(album => (
+            <AlbumDetail
+                navigation={props.navigation}
+                key={album.id}
+                title={album.title._content}
+                albumId={album.id}
+            />
+        ));
+    };
+
+    if (!photosetState.photoset) {
+        return <Text>{translate('LOADING')}</Text>;
     }
 
     return (
-      <View style={{ flex: 1 }}>
-        <ScrollView>
-          {this.renderAlbums()}
-        </ScrollView>
-      </View>
+        <View style={{flex: 1}}>
+            <ScrollView>{renderAlbums()}</ScrollView>
+        </View>
     );
-  }
-}
+};
 
 export default AlbumList;
